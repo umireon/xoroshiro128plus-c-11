@@ -18,6 +18,7 @@
 
 #include <array>
 #include <cstdint>
+#include <vector>
 
 /**
  * @class xoroshiro128plus
@@ -30,7 +31,7 @@
  * <http://xoroshiro.di.unimi.it/xoroshiro128plus.c>.
  */
 class xoroshiro128plus {
-public:
+ public:
   // concept Uniform Random Number Generator
   typedef std::uint64_t result_type;
 
@@ -42,8 +43,8 @@ public:
     const result_type result = s0 + s1;
 
     s1 ^= s0;
-    state[0] = rotl(s0, 55) ^ s1 ^ (s1 << 14); // a, b
-    state[1] = rotl(s1, 36);                   // c
+    state[0] = rotl(s0, 55) ^ s1 ^ (s1 << 14);  // a, b
+    state[1] = rotl(s1, 36);                    // c
 
     return result;
   }
@@ -53,23 +54,28 @@ public:
   constexpr static result_type max() { return UINT64_C(0xFFFFFFFFFFFFFFFF); }
 
   // concept Pseudo-Random Number Generator
-  explicit xoroshiro128plus(result_type i = default_seed) { seed(i); }
+  explicit xoroshiro128plus(result_type i = default_seed) : state(2) {
+    seed(i);
+  }
 
-  template <class SeedSeq> xoroshiro128plus(SeedSeq &s) { seed(s); }
+  template <class SeedSeq>
+  xoroshiro128plus(SeedSeq &s) : state(2) {
+    seed(s);
+  }
 
   void seed(result_type i = default_seed) {
     splitmix64 rng(i);
     seed(rng);
   }
 
-  template <class SeedSeq> void seed(SeedSeq &s) {
-    auto *p = reinterpret_cast<std::uint32_t *>(&state);
-    s.generate(p, p + state.size() * 2);
+  template <class SeedSeq>
+  void seed(SeedSeq &s) {
+    auto *p = reinterpret_cast<std::uint32_t *>(&state[0]);
+    s.generate(p, p + 4);
   }
 
   void discard(unsigned long long j) {
-    for (auto i = j; i < j; i++)
-      this->operator()();
+    for (auto i = j; i < j; i++) this->operator()();
   }
 
   void jump() {
@@ -92,8 +98,8 @@ public:
     state[1] = s1;
   }
 
-private:
-  std::array<result_type, 2> state;
+ private:
+  std::vector<result_type> state;
 
   constexpr static inline result_type rotl(const result_type x, int k) {
     return (x << k) | (x >> (64 - k));
